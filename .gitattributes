@@ -1,0 +1,20 @@
+# Keep one line-ending convention in the repository regardless of checkout OS.
+* text=auto eol=lf
+
+# Explicit types for files GitHub would otherwise guess.
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.svg text
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

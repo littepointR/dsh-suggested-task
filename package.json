@@ -1,0 +1,66 @@
+{
+  "name": "@local/dsh-suggested-task",
+  "version": "1.0.0",
+  "description": "Suggested follow-up tasks after each completed DSH turn, launched as child sessions in isolated Git worktrees",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "suggested-tasks",
+    "follow-up",
+    "git-worktree",
+    "child-sessions"
+  ],
+  "license": "MIT",
+  "author": "littepoint",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/littepointR/dsh-suggested-task.git"
+  },
+  "homepage": "https://github.com/littepointR/dsh-suggested-task#readme",
+  "bugs": {
+    "url": "https://github.com/littepointR/dsh-suggested-task/issues"
+  },
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "locale",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "dsh": "^0.2.1-rc.2"
+  },
+  "scripts": {
+    "test": "node --test test/host.test.mjs test/client.test.mjs",
+    "check": "node --check index.js && node --check client.js && node --check test/host.test.mjs && node --check test/client.test.mjs"
+  },
+  "dsh": {
+    "icon": "./icon",
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  }
+}

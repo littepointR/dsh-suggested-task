@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Suggested Tasks",
+    "description": "Suggests follow-up tasks after each completed turn and launches one or all of them in isolated Git worktree child sessions."
+  }
+}

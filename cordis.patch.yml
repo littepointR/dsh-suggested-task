@@ -1,0 +1,24 @@
+# Suggested Task — follow-up task suggestions after each completed turn, with
+# one-click single or batch launch into isolated Git worktree child sessions.
+#
+# Every key below is optional; the row's `config` block overrides the defaults
+# in index.js. Uncomment and edit a value to tune it:
+#
+#   enabled: true             # false leaves the Host half unregistered
+#   mode: fork                # fork = parent transcript + synthetic prompt; digest = compact turn summary
+#   maxTasks: 3               # maximum suggested tasks per turn (1..5)
+#   maxTokens: 1024           # output budget of the suggestion request
+#   temperature: 0.3
+#   timeoutMs: 15000          # hard bound on the suggestion request, in milliseconds
+#   maxForkChars: 12000       # fork-mode conversation window budget
+#   maxInputChars: 6000       # digest-mode excerpt size bound
+#   fallback: true            # retry with the compact digest when fork mode yields no tasks
+#   skipSubagents: true       # subagent sessions get no task suggestions
+#   skipTaskSessions: true    # child sessions started from suggested tasks do not auto-suggest further tasks
+#   worktreePrefix: task/     # branch prefix for created Git worktrees under .agents/worktrees/
+#   worktreeFallback: true    # allow starting in the current cwd when the session is not in a Git repo
+#   provider: ...             # explicit route; defaults to the turn's own model
+#   model: ...
+- insert:
+    - id: suggested-task
+      name: '@local/dsh-suggested-task'

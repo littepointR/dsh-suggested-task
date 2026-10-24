@@ -1,0 +1,18 @@
+# Dependencies installed by a profile's plugin manager
+node_modules/
+pnpm-lock.yaml
+
+# Editor and OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local scratch, logs and generated worktrees
+.scratch/
+*.log
+.agents/worktrees/
+
+# Package-manager caches and build output
+coverage/
+*.tgz
