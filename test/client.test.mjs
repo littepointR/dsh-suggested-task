@@ -109,11 +109,11 @@ function makeHarness() {
     },
   }
 
-  const ctx = {
-    effect(callback) {
-      const dispose = callback()
-      return typeof dispose === 'function' ? dispose : () => {}
-    },
+  // Optional Client services are reached through `ctx.get(name)`. A guarded
+  // context mirrors Cordis: reading an undeclared service as a property throws
+  // `cannot get property "<name>" without inject`, which is exactly how the
+  // released 1.0.0 Client half failed to activate in DSH.
+  const services = {
     locale: {
       register(_namespace, dictionaries) {
         state.dictionaries = dictionaries
@@ -181,6 +181,35 @@ function makeHarness() {
     },
   }
 
+  const resolveService = (name) => {
+    let value = services
+    for (const part of String(name).split('.')) value = value?.[part]
+    return value
+  }
+
+  const ctx = new Proxy(
+    {
+      effect(callback) {
+        const dispose = callback()
+        return typeof dispose === 'function' ? dispose : () => {}
+      },
+      get(name) {
+        return resolveService(name)
+      },
+      // `slots` and `locale` are the two services the plugin declares in inject.
+      locale: services.locale,
+      slots: services.slots,
+    },
+    {
+      get(target, prop, receiver) {
+        if (typeof prop === 'string' && prop in services && !(prop in target)) {
+          throw new Error(`cannot get property "${prop}" without inject`)
+        }
+        return Reflect.get(target, prop, receiver)
+      },
+    },
+  )
+
   const module = captured.factory(requireStub)
   module.apply(ctx)
   return { ctx, state }
@@ -216,6 +245,30 @@ test('the Client module registers all expected slots and matching zh/en dictiona
   assert.ok(slotNames.includes('sidebar.session.row.leading'))
   assert.ok(slotNames.includes('sidebar.session.row.hover'))
   assert.ok(slotNames.includes('conversation.chat.commandview'))
+})
+
+test('Client half activates with a Cordis-guarded context that only exposes injected services', async () => {
+  // Regression: `sessions`, `uiWorkspace`, and `remote` are not in the plugin's
+  // `inject` list, so a direct property read throws
+  // `cannot get property "<name>" without inject` in DSH and the whole Client
+  // entry failed to activate. The harness now throws the same error for those
+  // service names and only serves them through `ctx.get()`.
+  const { state, ctx } = makeHarness()
+
+  const leadingSlot = state.slots.find((entry) => entry.options.name === 'sidebar.session.row.leading')
+  assert.ok(leadingSlot !== undefined)
+  const injected = leadingSlot.options.inject()
+  assert.ok(injected.sessions !== undefined)
+  assert.equal(typeof injected.sessions.list.getSnapshot, 'function')
+
+  const turnTail = state.slots.find((entry) => entry.options.name === 'conversation.chat.turnTail')
+  assert.ok(turnTail !== undefined)
+  const cardInject = turnTail.options.inject('session-parent')
+  assert.deepEqual(await cardInject.loadProjection('session-parent'), { values: {} })
+
+  // Guard sanity check: the harness must reject direct reads of undeclared services.
+  assert.throws(() => ctx.sessions, /without inject/u)
+  assert.throws(() => ctx.remote, /without inject/u)
 })
 
 test('SuggestedTasksTurnCard renders tasks, starts single or all tasks, and opens child sub-sessions', async () => {

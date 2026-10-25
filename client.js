@@ -30,6 +30,38 @@ window.__ModuleLoader__.load({
     const COMMAND = 'tasks'
     const COMMAND_PAYLOAD_PREFIX = 'DSH_SUGGESTED_TASKS_V1:'
 
+    /**
+     * Resolve one optional Client service without tripping Cordis's inject guard.
+     *
+     * Reading `ctx.<service>` throws `cannot get property "<name>" without
+     * inject` for a service the plugin did not declare in `inject` (Client
+     * services such as `sessions` are guarded). `ctx.get()` returns undefined
+     * instead, and the property walk keeps minimal test doubles and older
+     * hosts working.
+     *
+     * @param {any} ctx - Client plugin context.
+     * @param {string} name - Service name; dots address nested services such as `remote.session`.
+     * @returns the service instance, or undefined when this composition lacks it.
+     */
+    function clientService(ctx, name) {
+      try {
+        if (typeof ctx?.get === 'function') {
+          const direct = ctx.get(name)
+          if (direct !== undefined) return direct
+        }
+      } catch {
+        // A guarded host may still reject the lookup; fall through to the walk below.
+      }
+      const parts = typeof name === 'string' ? name.split('.') : []
+      let value = ctx
+      try {
+        for (const part of parts) value = value?.[part]
+        return value
+      } catch {
+        return undefined
+      }
+    }
+
     const zh = {
       title: '建议后续任务',
       subtitle: '独立 Git 工作树 · 子会话',
@@ -1215,7 +1247,7 @@ window.__ModuleLoader__.load({
      * connector line so child sessions visually group under their parent.
      */
     function installSidebarTreeStyles(ctx) {
-      const list = ctx.sessions?.list
+      const list = clientService(ctx, 'sessions')?.list
       if (list === undefined || typeof list.getSnapshot !== 'function') return
 
       const updateStyles = () => {
@@ -1336,7 +1368,7 @@ window.__ModuleLoader__.load({
         ctx.effect(() => ctx.locale.register(NS, { zh, en }))
 
         const openSession = (targetSessionId) => {
-          ctx.uiWorkspace?.openSession?.(targetSessionId)
+          clientService(ctx, 'uiWorkspace')?.openSession?.(targetSessionId)
         }
 
         ctx.effect(() =>
@@ -1349,8 +1381,8 @@ window.__ModuleLoader__.load({
                 locale: NS,
                 inject: (sessionId) => ({
                   sessionId,
-                  loadProjection: (id) => ctx.remote?.session?.projections?.({ sessionId: id }),
-                  executeCommand: (id, line) => ctx.remote?.commands?.execute?.(id, line, []),
+                  loadProjection: (id) => clientService(ctx, 'remote.session')?.projections?.({ sessionId: id }),
+                  executeCommand: (id, line) => clientService(ctx, 'remote.commands')?.execute?.(id, line, []),
                   openSession,
                 }),
               },
@@ -1386,7 +1418,7 @@ window.__ModuleLoader__.load({
                 order: 5,
                 locale: NS,
                 inject: () => ({
-                  sessions: ctx.sessions,
+                  sessions: clientService(ctx, 'sessions'),
                 }),
               },
               SidebarSessionLeadingMark,
@@ -1403,7 +1435,7 @@ window.__ModuleLoader__.load({
                 order: 5,
                 locale: NS,
                 inject: () => ({
-                  sessions: ctx.sessions,
+                  sessions: clientService(ctx, 'sessions'),
                 }),
               },
               SidebarSessionHoverCard,

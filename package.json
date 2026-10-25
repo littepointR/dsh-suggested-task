@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-suggested-task",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Suggested follow-up tasks after each completed DSH turn, launched as child sessions in isolated Git worktrees",
   "keywords": [
     "dsh",
@@ -64,3 +64,4 @@
     }
   }
 }
+
