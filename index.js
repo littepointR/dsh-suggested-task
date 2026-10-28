@@ -1281,7 +1281,6 @@ export function apply(ctx, rawConfig) {
           inheritedEventCount: inherited,
           childOf: knownChild,
           turns: {},
-          lastFailure: undefined,
         }
         if (sessionId !== '') {
           statesBySession.set(sessionId, initial)
@@ -1472,7 +1471,8 @@ export function apply(ctx, rawConfig) {
             inheritedEventCount: state.inheritedEventCount,
             childOf: state.childOf,
             turns: state.turns,
-            lastFailure: state.lastFailure,
+            // Omit absent optional fields: forwarded Host events require lossless JSON.
+            ...(state.lastFailure === undefined ? {} : { lastFailure: state.lastFailure }),
           }
         },
       },

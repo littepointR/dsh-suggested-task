@@ -204,6 +204,79 @@ test('buildForkContext preserves assistant source metadata and appends the synth
   assert.equal(context.messages[2].content[0].text, 'Suggest follow-up tasks.')
 })
 
+test('new session projection state and summary survive a lossless JSON round-trip', () => {
+  let definition
+  const scoped = {
+    sessionProjections: { register(value) { definition = value } },
+    commands: { register() {} },
+  }
+  apply(rootContext(scoped, {}), {})
+
+  const state = definition.init({ id: 'new-session' }, 0)
+  assert.deepEqual(JSON.parse(JSON.stringify(state)), state)
+
+  const summary = {
+    sessionId: 'new-session',
+    projections: { values: { [PROJECTION_KEY]: definition.wire.view(state) } },
+  }
+  // api-session/added forwards this projection and rejects lossy JSON values.
+  assert.deepEqual(JSON.parse(JSON.stringify(summary)), summary)
+})
+
+test('cached projection states with missing or undefined failures remain lossless JSON on the wire', () => {
+  let definition
+  const scoped = {
+    sessionProjections: { register(value) { definition = value } },
+    commands: { register() {} },
+  }
+  apply(rootContext(scoped, {}), {})
+
+  const cached = {
+    sessionId: 'cached-session', parentSessionId: '',
+    inheritedEventCount: 0, childOf: null, turns: {},
+  }
+  for (const state of [cached, { ...cached, lastFailure: undefined }]) {
+    const view = definition.wire.view(state)
+    assert.deepEqual(JSON.parse(JSON.stringify(view)), view)
+    assert.equal(view.lastFailure, undefined)
+  }
+})
+
+test('failed suggestion generation preserves its failure record as lossless JSON', async () => {
+  let definition
+  const listeners = {}
+  const scoped = {
+    sessionProjections: { register(value) { definition = value } },
+    commands: { register() {} },
+    on(name, listener) { listeners[name] = listener },
+    llm: {
+      async prepareCall(config) {
+        return {
+          config,
+          stream: async function* () {
+            yield { type: 'finish', reason: { kind: 'stop' } }
+          },
+        }
+      },
+    },
+  }
+  apply(rootContext(scoped, listeners), { mode: 'digest', fallback: false })
+  const session = fakeSession([userEvent('Add a parser'), assistantEvent('Parser added.')])
+  let state = definition.init(session.header, 0)
+  await listeners['agent/turn-stopping']({ agent: { session }, turn: 1 })
+  state = definition.apply(state, {
+    type: 'turn/end', seq: 3, data: { turn: 1, reason: { kind: 'completed' } },
+  })
+
+  assert.equal(state.lastFailure.turn, 1)
+  assert.equal(typeof state.lastFailure.reason, 'string')
+  assert.equal(typeof state.lastFailure.at, 'number')
+  const view = definition.wire.view(state)
+  assert.deepEqual(view.lastFailure, state.lastFailure)
+  assert.deepEqual(JSON.parse(JSON.stringify(state)), state)
+  assert.deepEqual(JSON.parse(JSON.stringify(view)), view)
+})
+
 test('turn-stopping generates suggestions and turn/end publishes them into the projection', async () => {
   const events = [
     { type: 'turn/start', seq: 1, data: { turn: 1 } },
@@ -270,6 +343,8 @@ test('turn-stopping generates suggestions and turn/end publishes them into the p
   assert.equal(view.turns['1'].tasks.length, 1)
   assert.equal(view.turns['1'].tasks[0].title, 'Run unit tests')
   assert.equal(view.turns['1'].tasks[0].branch, 'task/parser-tests')
+  assert.deepEqual(JSON.parse(JSON.stringify(state)), state)
+  assert.deepEqual(JSON.parse(JSON.stringify(view)), view)
 })
 
 test('createGitWorktree creates a git worktree under .agents/worktrees and switches workingDirectory', async () => {
